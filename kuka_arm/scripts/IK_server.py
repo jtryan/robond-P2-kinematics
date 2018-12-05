@@ -147,7 +147,7 @@ def handle_calculate_IK(req):
 
             R3_6 = R0_3.inv("LU") * ROT_EE
             # using transpose instead:
-            # R3_6 = R0_3.T * ROT_EE
+            # R3_6 = R0_3.transpose() * ROT_EE
 
 
             # Calculate joint angles using Geometric IK method
@@ -155,21 +155,20 @@ def handle_calculate_IK(req):
             
             theta5 =  atan2(sqrt(R3_6[0,2] * R3_6[0,2] + R3_6[2,2] * R3_6[2,2]), R3_6[1,2])
 
-            # this needs to be worked out better to choose 4 and 6
-            '''
-            Interesting
-            theta5 = atan2(sqrt(R3_6[0,2]**2 + R3_6[2,2]**2), R3_6[1,2])
+        
+            # theta5 = atan2(sqrt(R3_6[0,2]**2 + R3_6[2,2]**2), R3_6[1,2])
             # Choosing between multiple possible solutions:
-            if sin(theta5) < 0:
+            if theta5 > pi:
                 theta4 = atan2(-R3_6[2,2], R3_6[0,2])
                 theta6 = atan2(R3_6[1,1], -R3_6[1,0])
             else:
                 theta4 = atan2(R3_6[2,2], -R3_6[0,2])
                 theta6 = atan2(-R3_6[1,1], R3_6[1,0])
-            '''
 
-            theta4 = atan2(R3_6[2,2], -R3_6[0,2])
-            theta6 = atan2(-R3_6[1,1], R3_6[1,0])
+
+            # theta4 = atan2(R3_6[2,2], -R3_6[0,2])
+            # theta6 = atan2(-R3_6[1,1], R3_6[1,0])
+            #https://github.com/mkhuthir/RoboND-Kinematics-Project/blob/master/src/kuka_arm/scripts/IK_server.py
 
             # Populate response for the IK request
             # In the next line replace theta1,theta2...,theta6 by your joint angle variables
