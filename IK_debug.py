@@ -4,6 +4,7 @@ from sympy import *
 from time import time
 from mpmath import radians
 import tf
+import numpy as np
 
 '''
 Format of test case is [ [[EE position],[EE orientation as quaternions]],[WC location],[joint angles]]
@@ -64,10 +65,39 @@ def test_code(test_case):
     ########################################################################################
     ### Your FK code here
     # Create symbols
+
+    def TF_Matrix(alpha, a, d, q):
+        TF = Matrix([[            cos(q),           -sin(q),           0,             a],
+                [      sin(q)*cos(alpha), cos(q)*cos(alpha), -sin(alpha), -sin(alpha)*d],
+                [      sin(q)*sin(alpha), cos(q)*sin(alpha),  cos(alpha),   cos(alpha)*d],
+                [                      0,                 0,           0,             1]])
+        return TF
+
+    def Rot_x(q):	
+        R_x = Matrix([[ 1,              0,        0],
+                    [ 0,        cos(q), -sin(q)],
+                    [ 0,        sin(q),  cos(q)]])   #ROLL
+        return R_x
+
+    def Rot_y(q):
+        R_y = Matrix([[ cos(q),        0,  sin(q)],
+                    [       0,        1,        0],
+                    [-sin(q),        0,  cos(q)]])    #PITCH
+        return R_y
+
+    def Rot_z(q):
+        R_z = Matrix([[ cos(q), -sin(q),        0],
+                    [ sin(q),  cos(q),        0],
+                    [ 0,              0,        1]])   # YAW
+        return R_z
+
+     ### Your FK code here
+        # Create symbols
     q1, q2, q3, q4, q5, q6, q7 = symbols('q1:8') # theta_i
     d1, d2, d3, d4, d5, d6, d7 = symbols('d1:8') # link offset
     a0, a1, a2, a3, a4, a5, a6 = symbols('a0:7') # link length
     alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6 = symbols('alpha0:7') # twist angle
+    r, p, y = symbols('r p y')
 
 	# Create Modified DH parameters
     s = {alpha0:    0,  a0:      0,  d1:  0.75,   q1:           q1,
@@ -77,17 +107,9 @@ def test_code(test_case):
         alpha4:  pi/2.,  a4:      0,  d5:     0,  q5:           q5,
         alpha5: -pi/2.,  a5:      0,  d6:     0,  q6:           q6,
         alpha6:     0,  a6:      0,  d7: 0.303,   q7:            0}
-    #
-    #
-    # Define Modified DH Transformation matrix
-    def TF_Matrix(alpha, a, d, q):
-        TF = Matrix([[            cos(q),           -sin(q),           0,             a],
-                [      sin(q)*cos(alpha), cos(q)*cos(alpha), -sin(alpha), -sin(alpha)*d],
-                [      sin(q)*sin(alpha), cos(q)*sin(alpha),  cos(alpha),   cos(alpha)*d],
-                [                      0,                 0,           0,             1]])
-        return TF
-    #
-    # Create individual transformation matrices
+
+	
+	    # Create individual transformation matrices
     T0_1 = TF_Matrix(alpha0, a0, d1, q1).subs(s)
     T1_2 = TF_Matrix(alpha1, a1, d2, q2).subs(s)
     T2_3 = TF_Matrix(alpha2, a2, d3, q3).subs(s) 
@@ -116,38 +138,26 @@ def test_code(test_case):
         # Compensate for rotation discrepancy between DH parameters and Gazebo
 
         # http://planning.cs.uiuc.edu/node102.html
-
-    r, p, y = symbols('r p y')
-
-    R_x = Matrix([[ 1,              0,        0],
-                  [ 0,        cos(r), -sin(r)],
-                  [ 0,        sin(r),  cos(r)]])              # ROLLL
-
-    R_y = Matrix([[ cos(p),        0,  sin(p)],
-                  [       0,        1,        0],
-                  [-sin(p),        0,  cos(p)]])            # PITCH
-
-    R_z = Matrix([[ cos(y), -sin(y),        0],
-                  [ sin(y),  cos(y),        0],
-                  [ 0,              0,        1]])              # YAW
-    
+    R_x = Rot_x(r)
+    R_y = Rot_y(p)
+    R_z = Rot_z(y)
 
     ROT_EE = R_z * R_y * R_x
-    # see KR120 fk
+
     Rot_Error = R_z.subs(y, radians(180)) * R_y.subs(p, radians(-90))
 
     ROT_EE = ROT_EE * Rot_Error
     ROT_EE = ROT_EE.subs({'r': roll, 'p': pitch, 'y': yaw})
 
+
     EE = Matrix([[px],
-                 [py],
-                 [pz]])
+                [py],
+                [pz]])
 
     WC = EE - (0.303) * ROT_EE[:,2]
 
-
-    theta1 = atan2(WC[1], WC[0])
-
+    theta1 = atan2(WC[1],WC[0])
+            
     # SS triangle theta2 and theta3
     side_a = 1.501
     side_b = sqrt(pow((sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35), 2) + pow((WC[2] - 0.75), 2))
@@ -158,18 +168,30 @@ def test_code(test_case):
     angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_a * side_b))
     
                 
-    theta2 = pi / 2 - angle_a - atan2(WC[2] - 0.75, sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
-    theta3 = pi / 2 - (angle_b + 0.036) # 0.036 accounts for sag in link4 of 0.054m
+    theta2 = np.pi / 2. - angle_a - atan2(WC[2] - 0.75,  sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
+    theta3 = np.pi / 2. - (angle_b + 0.036) # 0.036 accounts for sag in link4 of 0.054m
 
     R0_3 = T0_1[0:3,0:3] * T1_2[0:3,0:3] * T2_3[0:3,0:3]
-    R0_3 = R0_3.evalf(subs={'q1': theta1, 'q2': theta2, 'q3': theta3})
+    R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3})
 
-    R3_6 = R0_3.inv("LU") * ROT_EE
+    #R3_6 = R0_3.inv("LU") * ROT_EE
+    # using transpose instead:
+    R3_6 = R0_3.transpose() * ROT_EE
 
-    # Euler angls from rotation matrix
-    theta4 = atan2(R3_6[2,2], -R3_6[0,2])
-    theta5 = atan2(sqrt(R3_6[0,2] * R3_6[0,2] + R3_6[2,2] * R3_6[2,2]), R3_6[1,2])
-    theta6 = atan2(-R3_6[1,1], R3_6[1,0])
+
+    # Calculate joint angles using Geometric IK method
+    # Euler angles from rotation matrix
+    
+    theta5 =  atan2(sqrt(R3_6[0,2] * R3_6[0,2] + R3_6[2,2] * R3_6[2,2]), R3_6[1,2])
+
+    if sin(theta5) < 0:
+        theta4 = atan2(-R3_6[2,2], R3_6[0,2])
+        theta6 = atan2(R3_6[1,1], -R3_6[1,0])
+    else:
+        theta4 = atan2(R3_6[2,2], -R3_6[0,2])
+        theta6 = atan2(-R3_6[1,1], R3_6[1,0]) 
+
+    
     ## For additional debugging add your forward kinematics here. Use your previously calculated thetas
     ## as the input and output the position of your end effector as your_ee = [x,y,z]
 
