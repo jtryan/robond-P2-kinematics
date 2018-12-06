@@ -7,7 +7,7 @@
 #
 # All Rights Reserved.
 
-# Author: Harsh Pandya
+# Author: John Ryan
 
 # import modules
 import rospy
@@ -17,6 +17,7 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from geometry_msgs.msg import Pose
 from mpmath import *
 from sympy import *
+import numpy as np
 
 # Define Modified DH Transformation matrix
 def TF_Matrix(alpha, a, d, q):
@@ -59,6 +60,7 @@ def handle_calculate_IK(req):
         d1, d2, d3, d4, d5, d6, d7 = symbols('d1:8') # link offset
         a0, a1, a2, a3, a4, a5, a6 = symbols('a0:7') # link length
         alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6 = symbols('alpha0:7') # twist angle
+        r, p, y = symbols('r p y')
 
 	    # Create Modified DH parameters
         s = {alpha0:    0,  a0:      0,  d1:  0.75,   q1:           q1,
@@ -83,8 +85,6 @@ def handle_calculate_IK(req):
         T0_EE = T0_1 * T1_2 * T2_3 * T3_4 * T4_5 * T5_6 * T6_EE
 
         # Correcting difference in orientation between DH convention and URDF file
-        r, p, y = symbols('r p y')
-
         R_x = Rot_x(r)
         R_y = Rot_y(p)
         R_z = Rot_z(y)
@@ -93,8 +93,6 @@ def handle_calculate_IK(req):
         for x in xrange(0, len(req.poses)):
             # IK code starts here
             joint_trajectory_point = JointTrajectoryPoint()
-
-            ## Evaluate foreward K here
 
 	    # Extract end-effector position and orientation from request
 	    # px,py,pz = end-effector position
@@ -139,8 +137,8 @@ def handle_calculate_IK(req):
             angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_a * side_b))
             
                         
-            theta2 = pi / 2 - angle_a - atan2(WC[2] - 0.75,  sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
-            theta3 = pi / 2 - (angle_b + 0.036) # 0.036 accounts for sag in link4 of 0.054m
+            theta2 = np.pi / 2. - angle_a - atan2(WC[2] - 0.75,  sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
+            theta3 = np.pi / 2. - (angle_b + 0.036) # 0.036 accounts for sag in link4 of 0.054m
 
             R0_3 = T0_1[0:3,0:3] * T1_2[0:3,0:3] * T2_3[0:3,0:3]
             R0_3 = R0_3.evalf(subs={'q1': theta1, 'q2': theta2, 'q3': theta3})

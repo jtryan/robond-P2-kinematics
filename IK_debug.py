@@ -97,6 +97,7 @@ def test_code(test_case):
     d1, d2, d3, d4, d5, d6, d7 = symbols('d1:8') # link offset
     a0, a1, a2, a3, a4, a5, a6 = symbols('a0:7') # link length
     alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6 = symbols('alpha0:7') # twist angle
+    r, p, y = symbols('r p y')
 
 	# Create Modified DH parameters
     s = {alpha0:    0,  a0:      0,  d1:  0.75,   q1:           q1,
@@ -137,15 +138,12 @@ def test_code(test_case):
         # Compensate for rotation discrepancy between DH parameters and Gazebo
 
         # http://planning.cs.uiuc.edu/node102.html
-
-    r, p, y = symbols('r p y')
-
     R_x = Rot_x(r)
     R_y = Rot_y(p)
     R_z = Rot_z(y)
 
     ROT_EE = R_z * R_y * R_x
-    # see KR120 fk
+
     Rot_Error = R_z.subs(y, radians(180)) * R_y.subs(p, radians(-90))
 
     ROT_EE = ROT_EE * Rot_Error
@@ -170,15 +168,15 @@ def test_code(test_case):
     angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_a * side_b))
     
                 
-    theta2 = pi / 2 - angle_a - atan2(WC[2] - 0.75,  sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
-    theta3 = pi / 2 - (angle_b + 0.036) # 0.036 accounts for sag in link4 of 0.054m
+    theta2 = np.pi / 2. - angle_a - atan2(WC[2] - 0.75,  sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
+    theta3 = np.pi / 2. - (angle_b + 0.036) # 0.036 accounts for sag in link4 of 0.054m
 
     R0_3 = T0_1[0:3,0:3] * T1_2[0:3,0:3] * T2_3[0:3,0:3]
     R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3})
 
-    R3_6 = R0_3.inv("LU") * ROT_EE
+    #R3_6 = R0_3.inv("LU") * ROT_EE
     # using transpose instead:
-    # R3_6 = R0_3.T * RrpyEE
+    R3_6 = R0_3.transpose() * ROT_EE
 
 
     # Calculate joint angles using Geometric IK method
