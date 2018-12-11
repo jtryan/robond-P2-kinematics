@@ -109,7 +109,7 @@ def test_code(test_case):
         alpha6:     0,  a6:      0,  d7: 0.303,   q7:            0}
 
 	
-	    # Create individual transformation matrices
+	# Create individual transformation matrices
     T0_1 = TF_Matrix(alpha0, a0, d1, q1).subs(s)
     T1_2 = TF_Matrix(alpha1, a1, d2, q2).subs(s)
     T2_3 = TF_Matrix(alpha2, a2, d3, q3).subs(s) 
@@ -119,9 +119,19 @@ def test_code(test_case):
     T6_EE = TF_Matrix(alpha6, a6, d7, q7).subs(s)
 
 
+
+    # print(latex(T0_1))
+    # print(latex(T1_2))
+    # print(latex(T2_3))
+    # print(latex(T3_4))
+    # print(latex(T4_5))
+    # print(latex(T5_6))
+    # print(latex(T6_EE))
     # Extract rotation matrices from the transformation matrices
 
-    T0_EE = T0_1 * T1_2 * T2_3 * T3_4 * T4_5 * T5_6 * T6_EE
+    T0_EE = simplify(T0_1 * T1_2 * T2_3 * T3_4 * T4_5 * T5_6 * T6_EE)
+
+    print(latex(T0_EE))
 
     # Extract end-effector position and orientation from request
     # px,py,pz = end-effector position
